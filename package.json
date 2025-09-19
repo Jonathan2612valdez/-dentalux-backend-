@@ -1,0 +1,26 @@
+﻿{
+    "name":  "dentalux-backend",
+    "version":  "1.0.0",
+    "description":  "",
+    "main":  "server.js",
+    "scripts":  {
+                    "test":  "echo \"Error: no test specified\" \u0026\u0026 exit 1",
+                    "dev":  "nodemon server.js",
+                    "start":  "node server.js"
+                },
+    "keywords":  [
+
+                 ],
+    "author":  "",
+    "license":  "ISC",
+    "dependencies":  {
+                         "cors":  "^2.8.5",
+                         "dotenv":  "^17.2.2",
+                         "express":  "^5.1.0",
+                         "mercadopago":  "^2.9.0",
+                         "nodemailer":  "^7.0.6"
+                     },
+    "devDependencies":  {
+                            "nodemon":  "^3.1.10"
+                        }
+}
