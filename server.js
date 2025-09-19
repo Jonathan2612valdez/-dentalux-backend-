@@ -1,8 +1,8 @@
-﻿// server.js - Backend completo para procesar pagos con MercadoPago
+﻿// server.js - Backend completo para procesar pagos con MercadoPago (CORREGIDO)
 
 const express = require('express');
 const cors = require('cors');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const mercadopago = require('mercadopago');
 require('dotenv').config();
 
 const app = express();
@@ -10,17 +10,15 @@ const PORT = process.env.PORT || 10000;
 
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:3000', 'https://tu-frontend.netlify.app', 'https://tu-dominio.com'],
+    origin: '*', // Permitir todos los orígenes temporalmente
     credentials: true
 }));
 app.use(express.json());
 
-// Configurar MercadoPago
-const client = new MercadoPagoConfig({
-    accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN,
+// Configurar MercadoPago (sintaxis corregida)
+mercadopago.configure({
+    access_token: process.env.MERCADOPAGO_ACCESS_TOKEN
 });
-
-const payment = new Payment(client);
 
 // Endpoint de salud
 app.get('/health', (req, res) => {
@@ -28,7 +26,8 @@ app.get('/health', (req, res) => {
     res.status(200).json({ 
         status: 'ok', 
         message: 'Backend DENTALUX funcionando correctamente',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        mercadopago_configured: !!process.env.MERCADOPAGO_ACCESS_TOKEN
     });
 });
 
@@ -57,7 +56,7 @@ app.post('/api/process-payment', async (req, res) => {
             });
         }
 
-        // Crear el pago
+        // Crear el pago usando la sintaxis correcta
         const paymentData = {
             token,
             transaction_amount: Number(transaction_amount),
@@ -77,18 +76,18 @@ app.post('/api/process-payment', async (req, res) => {
 
         console.log('📤 Enviando a MercadoPago:', paymentData);
 
-        const response = await payment.create({ body: paymentData });
+        // Usar la API correcta de MercadoPago
+        const response = await mercadopago.payment.create(paymentData);
         
-        console.log('✅ Respuesta de MercadoPago:', response);
+        console.log('✅ Respuesta de MercadoPago:', response.body);
 
         // Simular activación de suscripción si el pago es aprobado
-        if (response.status === 'approved') {
+        if (response.body.status === 'approved') {
             console.log('✅ Pago aprobado - Activando suscripción...');
             // Aquí agregarías tu lógica para activar la suscripción
-            // Por ejemplo: crear usuario en base de datos, enviar email, etc.
         }
 
-        res.status(200).json(response);
+        res.status(200).json(response.body);
 
     } catch (error) {
         console.error('❌ Error procesando pago:', error);
@@ -96,7 +95,7 @@ app.post('/api/process-payment', async (req, res) => {
         res.status(500).json({
             error: 'Error procesando el pago',
             message: error.message,
-            details: error.cause || null
+            details: error.response?.data || null
         });
     }
 });
@@ -127,18 +126,19 @@ app.post('/api/process-alternative-payment', async (req, res) => {
 
         console.log('📤 Enviando pago alternativo a MercadoPago:', paymentData);
 
-        const response = await payment.create({ body: paymentData });
+        const response = await mercadopago.payment.create(paymentData);
         
-        console.log('✅ Respuesta de pago alternativo:', response);
+        console.log('✅ Respuesta de pago alternativo:', response.body);
 
-        res.status(200).json(response);
+        res.status(200).json(response.body);
 
     } catch (error) {
         console.error('❌ Error en pago alternativo:', error);
         
         res.status(500).json({
             error: 'Error procesando el pago alternativo',
-            message: error.message
+            message: error.message,
+            details: error.response?.data || null
         });
     }
 });
@@ -179,6 +179,19 @@ app.post('/api/activate-subscription', async (req, res) => {
     }
 });
 
+// Endpoint de test simple
+app.post('/api/test-payment', async (req, res) => {
+    console.log('🧪 Test de pago simple...');
+    console.log('📥 Datos de test:', req.body);
+    
+    res.status(200).json({
+        success: true,
+        message: 'Test de conectividad exitoso',
+        data: req.body,
+        timestamp: new Date().toISOString()
+    });
+});
+
 // Webhook para recibir notificaciones de MercadoPago
 app.post('/webhook', (req, res) => {
     console.log('🔔 Webhook recibido de MercadoPago:', req.body);
@@ -210,6 +223,7 @@ app.listen(PORT, () => {
     console.log(`   POST /api/process-payment`);
     console.log(`   POST /api/process-alternative-payment`);
     console.log(`   POST /api/activate-subscription`);
+    console.log(`   POST /api/test-payment`);
     console.log(`   POST /webhook`);
 });
 
