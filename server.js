@@ -275,15 +275,62 @@ app.post('/api/test-payment', async (req, res) => {
     });
 });
 
-// Webhook para MercadoPago
+// Webhook para MercadoPago - GET (para verificación)
+app.get('/webhook', (req, res) => {
+    console.log('🔔 Webhook GET (verificación) recibido de MercadoPago');
+    console.log('📥 Query params:', req.query);
+    
+    res.status(200).json({
+        status: 'ok',
+        message: 'Webhook endpoint funcionando correctamente',
+        timestamp: new Date().toISOString(),
+        endpoint: '/webhook',
+        methods: ['GET', 'POST']
+    });
+});
+
+// Webhook para MercadoPago - POST (notificaciones reales)
 app.post('/webhook', (req, res) => {
-    console.log('🔔 Webhook recibido de MercadoPago:', req.body);
+    console.log('🔔 Webhook POST recibido de MercadoPago:', req.body);
+    console.log('📥 Headers:', req.headers);
     
-    if (req.body.type === 'payment') {
-        console.log('💳 Notificación de pago:', req.body.data.id);
+    try {
+        const { type, action, data, date_created, id } = req.body;
+        
+        if (type === 'payment') {
+            console.log('💳 Notificación de pago:', data?.id || 'ID no disponible');
+            
+            // Aquí procesarías la notificación real del pago
+            // Por ejemplo, actualizar el estado en tu base de datos
+            console.log('💡 Procesar notificación de pago:', {
+                payment_id: data?.id,
+                action: action,
+                timestamp: date_created
+            });
+        }
+        
+        if (type === 'merchant_order') {
+            console.log('📦 Notificación de orden comercial:', data?.id || 'ID no disponible');
+        }
+        
+        if (type === 'subscription') {
+            console.log('📋 Notificación de suscripción:', data?.id || 'ID no disponible');
+        }
+        
+        // MercadoPago requiere respuesta 200 para confirmar recepción
+        res.status(200).json({
+            received: true,
+            processed_at: new Date().toISOString()
+        });
+        
+    } catch (error) {
+        console.error('❌ Error procesando webhook:', error);
+        // Aún así responder 200 para evitar reenvíos
+        res.status(200).json({
+            received: true,
+            error: 'Error interno, pero notificación recibida'
+        });
     }
-    
-    res.sendStatus(200);
 });
 
 // Manejo de errores global
@@ -301,11 +348,12 @@ app.listen(PORT, () => {
     console.log(`🔧 Access Token configurado: ${process.env.MERCADOPAGO_ACCESS_TOKEN ? 'SÍ' : 'NO'}`);
     console.log(`📍 Endpoints disponibles:`);
     console.log(`   GET  /health`);
+    console.log(`   GET  /webhook (verificación)`);
+    console.log(`   POST /webhook (notificaciones)`);
     console.log(`   POST /api/process-payment`);
     console.log(`   POST /api/process-alternative-payment`);
     console.log(`   POST /api/activate-subscription`);
     console.log(`   POST /api/test-payment`);
-    console.log(`   POST /webhook`);
     console.log(`🎭 Modo simulación habilitado para testing`);
 });
 
